@@ -1,0 +1,23 @@
+FROM ubuntu:focal
+
+RUN apt-get update // packages update karega
+RUN apt-get install -y curl // to do api calls
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash -
+RUN apt-get upgrade -y // upgrade karega
+RUN apt-get install -y nodejs // nodejs install karega
+
+RUN apt-get install git -y // install git
+
+WORKDIR /home/app
+
+COPY main.sh main.sh
+COPY script.js script.js
+COPY package*.json .
+
+RUN npm install
+
+RUN chmod +x main.sh
+RUN chmod +x script.js
+
+
+ENTRYPOINT [ "/home/app/main.sh" ]
