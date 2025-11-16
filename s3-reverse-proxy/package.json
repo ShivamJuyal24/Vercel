@@ -1,0 +1,24 @@
+{
+  "name": "vercel-clone",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000V\u0000e\u0000r\u0000c\u0000e\u0000l\u0000\r\u0000 \u0000",
+  "homepage": "https://github.com/ShivamJuyal24/Vercel#readme",
+  "bugs": {
+    "url": "https://github.com/ShivamJuyal24/Vercel/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShivamJuyal24/Vercel.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "http-proxy": "^1.18.1"
+  }
+}
