@@ -17,7 +17,7 @@ const ecsClient = new ECSClient({
 
 const config = {
   CLUSTER: 'arn:aws:ecs:eu-north-1:138234892622:cluster/builder-cluster-vercel',
-  TASK: 'arn:aws:ecs:eu-north-1:138234892622:task-definition/builder-task'
+  TASK: 'arn:aws:ecs:eu-north-1:138234892622:task-definition/builder-task:2'
 };
 
 app.use(express.json());
@@ -53,8 +53,11 @@ app.post('/project', async (req, res) => {
           {
             name: 'builder-image',
             environment: [
-              { name: 'GIT_REPOSITORY__URL', value: gitUrl },
-              { name: 'PROJECT_ID', value: projectSlug }
+        { name: 'GIT_REPOSITORY__URL', value: gitUrl },
+        { name: 'PROJECT_ID', value: projectSlug },
+        { name: 'ACCESS_KEY', value: process.env.ACCESS_KEY },
+        { name: 'SECRET_KEY', value: process.env.SECRET_KEY },
+        { name: 'BUCKET_NAME', value: 'vercel-object-storage' }
             ]
           }
         ]
