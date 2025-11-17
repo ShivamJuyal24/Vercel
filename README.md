@@ -248,49 +248,11 @@ Vercel/
 
 ---
 
-## 🔐 Security Considerations
 
-- ✅ Validate Git URLs to prevent malicious repositories
-- ✅ Implement rate limiting on API endpoints
-- ✅ Use IAM roles with least privilege for AWS resources
-- ✅ Sanitize user inputs
-- ⚠️ Add authentication/API keys (currently open)
 
----
 
-## 🚧 Roadmap
 
-- [ ] Add user authentication (JWT/OAuth)
-- [ ] Support for custom domains
-- [ ] Build caching for faster deployments
-- [ ] Preview deployments (PR-based)
-- [ ] Environment variables management
-- [ ] Support for Next.js, Vue, Angular
-- [ ] Build analytics dashboard
-- [ ] Deployment rollback feature
 
----
-
-## 🐛 Known Issues
-
-- Build timeout not implemented (builds can hang)
-- No cleanup of old deployments
-- Limited error handling for failed builds
-- No support for monorepos
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
 
 ## 📄 License
 
@@ -348,22 +310,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## Additional Files to Create:
 
-### 1. `LICENSE` (MIT License)
-```
-MIT License
-
-Copyright (c) 2024 Shivam Juyal
-
-Permission is hereby granted, free of charge, to any person obtaining a copy...
-```
-
-### 2. `.gitignore`
-```
-node_modules/
-.env
-*.log
-build/
-dist/
-output/
