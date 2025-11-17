@@ -3,8 +3,25 @@ const path = require('path');
 const fs = require('fs');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const mime = require('mime-types');
+const Redis = require('ioredis');
 
-// Initialize S3 client correctly
+// Initialize Redis publisher
+const publisher = new Redis(process.env.REDIS_URL);
+
+// Handle Redis connection events
+publisher.on('error', (err) => {
+  console.error('❌ Redis connection error:', err);
+});
+
+publisher.on('connect', () => {
+  console.log('✅ Redis connected successfully');
+});
+
+publisher.on('ready', () => {
+  console.log('✅ Redis is ready');
+});
+
+// Initialize S3 client
 const s3 = new S3Client({
   region: 'eu-north-1',
   credentials: {
@@ -15,56 +32,119 @@ const s3 = new S3Client({
 
 const PROJECT_ID = process.env.PROJECT_ID;
 
-async function init(){
-  console.log('Executing script.js');
+// Fixed publishLog function
+function publishLog(log) {
+  const channel = `logs:${PROJECT_ID}`;
+  const message = JSON.stringify({ log });
+  
+  console.log(`📤 Publishing to ${channel}: ${log}`);
+  
+  publisher.publish(channel, message, (err, numSubscribers) => {
+    if (err) {
+      console.error('❌ Failed to publish:', err);
+    } else {
+      console.log(`✅ Published to ${numSubscribers} subscriber(s)`);
+    }
+  });
+}
+
+async function init() {
+  console.log('🚀 Executing script.js');
+  
+  // Wait for Redis to be ready before publishing
+  try {
+    await publisher.ping();
+    console.log('✅ Redis PING successful');
+  } catch (err) {
+    console.error('❌ Redis PING failed:', err);
+  }
+
+  publishLog('🚀 Build started...');
+  
   const outDirPath = path.join(__dirname, 'output');
 
-  const p = exec(`cd ${outDirPath} && npm install --legacy-peer-deps && npm run build`);
+  publishLog('📦 Installing dependencies...');
+  
+  const p = exec(`npm install --legacy-peer-deps && npm run build`, {
+    cwd: outDirPath,
+  });
 
   p.stdout.on('data', function (data) {
-    console.log(data.toString());
+    const output = data.toString();
+    console.log(output);
+    publishLog(output);
   });
 
   p.stderr.on('data', function (data) {
-    console.error(data.toString());
+    const output = data.toString();
+    console.error(output);
+    publishLog(`⚠️ ${output}`);
   });
 
-  p.on('close', async function () {
-  console.log('Build process exited');
+  p.on('close', async function (code) {
+    if (code !== 0) {
+      console.error(`❌ Build process exited with code ${code}`);
+      publishLog(`❌ Build failed with exit code ${code}`);
+      await publisher.quit();
+      process.exit(1);
+    }
 
-  // Try build → dist fallback
-  let buildFolderPath = path.join(__dirname, 'output', 'build');
+    console.log('✅ Build complete');
+    publishLog('✅ Build completed. Starting deployment...');
 
-  if (!fs.existsSync(buildFolderPath)) {
-    console.log("No 'build' folder found, checking 'dist'...");
-    buildFolderPath = path.join(__dirname, 'output', 'dist');
-  }
+    // Try build → dist fallback
+    let buildFolderPath = path.join(__dirname, 'output', 'build');
 
-  if (!fs.existsSync(buildFolderPath)) {
-    console.error("Neither 'build' nor 'dist' folder found.");
-    process.exit(1);
-  }
+    if (!fs.existsSync(buildFolderPath)) {
+      console.log("No 'build' folder found, checking 'dist'...");
+      publishLog("📂 No 'build' folder, using 'dist' folder");
+      buildFolderPath = path.join(__dirname, 'output', 'dist');
+    }
 
-  const buildFolderContents = fs.readdirSync(buildFolderPath, { recursive: true });
+    if (!fs.existsSync(buildFolderPath)) {
+      console.error("❌ Neither 'build' nor 'dist' folder found.");
+      publishLog("❌ Deployment failed: No build output found");
+      await publisher.quit();
+      process.exit(1);
+    }
 
-  for (const file of buildFolderContents) {
-    const filePath = path.join(buildFolderPath, file);
-    if (fs.lstatSync(filePath).isDirectory()) continue;
+    const buildFolderContents = fs.readdirSync(buildFolderPath, { recursive: true });
+    
+    publishLog(`📁 Found ${buildFolderContents.length} files to upload`);
 
-    console.log("Uploading", filePath);
-    const command = new PutObjectCommand({
-      Bucket: process.env.BUCKET_NAME,
-      Key: `__outputs/${PROJECT_ID}/${file}`,
-      Body: fs.createReadStream(filePath),
-      ContentType: mime.lookup(filePath) || 'application/octet-stream',
-    });
+    for (const file of buildFolderContents) {
+      const filePath = path.join(buildFolderPath, file);
+      if (fs.lstatSync(filePath).isDirectory()) continue;
 
-    await s3.send(command);
-    console.log("Uploaded", filePath);
-  }
+      console.log("⬆️ Uploading", filePath);
+      publishLog(`⬆️ Uploading: ${file}`);
+      
+      try {
+        const command = new PutObjectCommand({
+          Bucket: process.env.BUCKET_NAME,
+          Key: `__outputs/${PROJECT_ID}/${file}`,
+          Body: fs.createReadStream(filePath),
+          ContentType: mime.lookup(filePath) || 'application/octet-stream',
+        });
 
-  console.log("Deployment completed");
-});
+        await s3.send(command);
+        console.log("✅ Uploaded", filePath);
+        publishLog(`✅ ${file}`);
+      } catch (uploadErr) {
+        console.error(`❌ Failed to upload ${file}:`, uploadErr);
+        publishLog(`❌ Upload failed: ${file}`);
+      }
+    }
 
+    console.log("🎉 Deployment completed");
+    publishLog('🎉 Deployment completed successfully!');
+    publishLog(`🌐 Visit: http://${PROJECT_ID}.localhost:8000`);
+    
+    // Close Redis connection gracefully
+    await publisher.quit();
+    console.log('✅ Redis connection closed');
+    process.exit(0);
+  });
 }
+
 init();
